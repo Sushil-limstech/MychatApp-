@@ -6,297 +6,340 @@
   <title>MyChatApp</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
   <style>
-    :root {
-      --bg: #eae6df;
-      --card-bg: #ffffff;
-      --text: #111b21;
-      --subtext: #667781;
-      --header-bg: #075e54;
-      --chat-incoming: #ffffff;
-      --chat-outgoing: #dcf8c6;
-      --footer-bg: #f0f2f5;
-    }
-    body.dark-mode {
-      --bg: #0b141a;
-      --card-bg: #111b21;
-      --text: #e9edef;
-      --subtext: #8696a0;
-      --header-bg: #202c33;
-      --chat-incoming: #202c33;
-      --chat-outgoing: #005c4b;
-      --footer-bg: #202c33;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #111b21; color: #e9edef; height: 100vh; overflow: hidden; }
 
-    .navbar { background: var(--header-bg); color: white; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; }
-    .nav-btn { background: transparent; border: none; font-size: 18px; color: white; cursor: pointer; }
-
-    /* Auth Screen */
-    #auth-view { max-width: 360px; margin: 40px auto; padding: 25px; background: var(--card-bg); border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-    .input-box { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #ccc; border-radius: 6px; font-size: 15px; outline: none; }
-    .btn-primary { width: 100%; padding: 12px; background: #25d366; color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 8px; font-size: 15px; }
-    .btn-secondary { width: 100%; padding: 10px; background: transparent; color: #075e54; border: 1px solid #075e54; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 8px; }
+    /* Auth Screens */
+    #auth-screen { max-width: 380px; margin: 60px auto; padding: 25px; background: #202c33; border-radius: 12px; }
+    .input-box { width: 100%; padding: 12px; margin: 8px 0; border: 1px solid #2a3942; background: #111b21; color: white; border-radius: 8px; font-size: 15px; outline: none; }
+    .btn-green { width: 100%; padding: 12px; background: #00a884; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; font-size: 15px; }
+    .btn-outline { width: 100%; padding: 10px; background: transparent; border: 1px solid #00a884; color: #00a884; border-radius: 8px; cursor: pointer; margin-top: 8px; font-weight: bold; }
 
     /* Dashboard */
-    #dashboard-view { display: none; height: 100vh; flex-direction: column; }
-    .tab-bar { display: flex; background: var(--header-bg); }
-    .tab { flex: 1; text-align: center; padding: 10px; color: #aebac1; font-weight: bold; cursor: pointer; font-size: 14px; }
-    .tab.active { color: white; border-bottom: 3px solid #25d366; }
+    #main-app { display: none; height: 100vh; flex-direction: column; }
+    .top-nav { background: #202c33; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #2a3942; }
+    .user-tag { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+    .my-dp { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; background: #00a884; }
 
-    #chats-tab { flex: 1; overflow-y: auto; }
-    .contact-card { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid rgba(0,0,0,0.06); cursor: pointer; }
-    .avatar { width: 44px; height: 44px; border-radius: 50%; background: #00a884; color: white; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 12px; font-size: 17px; }
-    .contact-info h4 { font-size: 15px; }
-    .contact-info p { font-size: 12px; color: var(--subtext); }
+    .chats-container { flex: 1; overflow-y: auto; }
+    .chat-row { display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid #202c33; cursor: pointer; }
+    .chat-row:hover { background: #202c33; }
+    .chat-dp { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; margin-right: 14px; background: #2a3942; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 
-    /* Chat Room */
-    #chat-room { display: none; flex-direction: column; height: 100vh; position: absolute; width: 100%; top: 0; left: 0; background: var(--bg); z-index: 10; }
-    .chat-header { background: var(--header-bg); color: white; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; }
-    .call-actions button { background: transparent; border: none; font-size: 20px; color: white; margin-left: 12px; cursor: pointer; }
+    /* Floating Add Contact Button */
+    .fab-btn { position: fixed; bottom: 25px; right: 25px; width: 56px; height: 56px; background: #00a884; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; color: white; border: none; cursor: pointer; box-shadow: 0 4px 10px rgba(0,0,0,0.4); }
 
-    .chat-messages { flex: 1; overflow-y: auto; padding: 15px; display: flex; flex-direction: column; gap: 8px; }
-    .bubble { max-width: 80%; padding: 8px 12px; border-radius: 8px; font-size: 14px; box-shadow: 0 1px 1px rgba(0,0,0,0.1); word-wrap: break-word; }
-    .bubble.incoming { background: var(--chat-incoming); align-self: flex-start; }
-    .bubble.outgoing { background: var(--chat-outgoing); align-self: flex-end; }
-    .bubble-header { display: flex; justify-content: space-between; font-size: 10px; color: var(--subtext); margin-bottom: 3px; gap: 10px; }
-    .delete-action { border: none; background: transparent; cursor: pointer; font-size: 12px; color: #888; }
-    .delete-action:hover { color: #d32f2f; }
+    /* Confidential Chat Room */
+    #chat-panel { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; flex-direction: column; background: #0b141a; }
+    .chat-header { background: #202c33; padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; }
+    .messages-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 8px; background-size: cover; background-position: center; }
+    .bubble { max-width: 75%; padding: 8px 12px; border-radius: 8px; font-size: 14px; word-wrap: break-word; }
+    .bubble.outgoing { background: #005c4b; align-self: flex-end; color: white; }
+    .bubble.incoming { background: #202c33; align-self: flex-start; color: white; }
 
-    .chat-footer { background: var(--footer-bg); padding: 8px 10px; display: flex; align-items: center; gap: 8px; position: relative; }
-    .chat-footer input { flex: 1; padding: 10px 14px; border: 1px solid #ccc; border-radius: 20px; outline: none; }
-    .action-btn { background: transparent; border: none; font-size: 20px; cursor: pointer; }
-    .send-icon { background: #075e54; color: white; border-radius: 50%; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; }
+    .footer-bar { background: #202c33; padding: 8px 12px; display: flex; align-items: center; gap: 8px; }
+    .footer-bar input { flex: 1; padding: 10px 14px; border: none; border-radius: 20px; background: #2a3942; color: white; outline: none; }
 
-    #sticker-palette { display: none; position: absolute; bottom: 55px; left: 10px; background: var(--card-bg); border-radius: 8px; padding: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); width: 220px; flex-wrap: wrap; gap: 8px; z-index: 20; }
-    .sticker-item { font-size: 26px; cursor: pointer; padding: 4px; }
-
-    /* Calling Overlay */
-    #call-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; flex-direction: column; }
-    #remote-video { width: 100%; height: 100%; object-fit: cover; }
-    #local-video { position: absolute; top: 20px; right: 20px; width: 100px; height: 140px; border-radius: 8px; object-fit: cover; border: 2px solid #fff; }
-    .call-controls { position: absolute; bottom: 30px; width: 100%; display: flex; justify-content: center; gap: 20px; }
-    .hangup-btn { background: #d32f2f; color: white; border: none; width: 56px; height: 56px; border-radius: 50%; font-size: 24px; cursor: pointer; }
+    /* Modal */
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 100; align-items: center; justify-content: center; }
+    .modal-card { background: #202c33; padding: 20px; border-radius: 10px; width: 320px; }
   </style>
 </head>
 <body>
 
-  <!-- 1. AUTH SCREEN (Self Register / Login) -->
-  <div id="auth-view">
-    <h2 style="color: #075e54; margin-bottom: 6px;">MyChatApp</h2>
-    <p style="font-size: 13px; color: #666; margin-bottom: 15px;">Public Chat & Calling Network</p>
-    <input type="tel" id="auth-mobile" class="input-box" placeholder="Mobile Number">
-    <input type="password" id="auth-pin" class="input-box" placeholder="Set / Enter Secret PIN">
-    
-    <button class="btn-primary" onclick="handleAuth('login')">Log In</button>
-    <button class="btn-secondary" onclick="handleAuth('signup')">Sign Up (New Account)</button>
-    <div id="auth-error" style="color: red; font-size: 13px; margin-top: 10px; text-align: center;"></div>
+  <!-- 1. AUTH SCREEN -->
+  <div id="auth-screen">
+    <h2 style="color: #00a884; margin-bottom: 5px;">MyChatApp</h2>
+    <p style="font-size: 13px; color: #8696a0; margin-bottom: 15px;">Encrypted Private Network</p>
+
+    <div id="login-fields">
+      <input type="tel" id="login-num" class="input-box" placeholder="Mobile Number">
+      <input type="password" id="login-pin" class="input-box" placeholder="Your Confidential PIN">
+      <button class="btn-green" onclick="doLogin()">Log In</button>
+      <button class="btn-outline" onclick="showSignupFlow()">Naya Account Banayein (Sign Up)</button>
+    </div>
+
+    <div id="signup-fields" style="display: none;">
+      <input type="tel" id="reg-num" class="input-box" placeholder="10-Digit Mobile Number">
+      <button class="btn-green" id="otp-btn" onclick="requestOTP()">OTP Bhejein</button>
+      
+      <div id="verify-box" style="display: none; margin-top: 10px;">
+        <input type="text" id="reg-otp" class="input-box" placeholder="4-Digit OTP Dalein">
+        <input type="password" id="reg-pin" class="input-box" placeholder="Manchaha Secret PIN Set Karein">
+        <button class="btn-green" onclick="completeRegistration()">Register & Start Chat</button>
+      </div>
+      <button class="btn-outline" onclick="showLoginFlow()">Back to Login</button>
+    </div>
+    <div id="auth-msg" style="color: #f15c6d; font-size: 13px; margin-top: 10px; text-align: center;"></div>
   </div>
 
-  <!-- 2. MAIN DASHBOARD -->
-  <div id="dashboard-view">
-    <div class="navbar">
-      <span id="nav-title">MyChatApp</span>
-      <div>
-        <button class="nav-btn" onclick="toggleTheme()">🌓</button>
-      </div>
-    </div>
-    <div class="tab-bar">
-      <div class="tab active" onclick="switchTab('chats')">CHATS</div>
-      <div class="tab" onclick="switchTab('status')">STATUS</div>
-    </div>
-
-    <!-- Chats & Contact List -->
-    <div id="chats-tab">
-      <div class="contact-card" onclick="openChat('All', 'Public Discussion Group')">
-        <div class="avatar" style="background:#128c7e;">👥</div>
-        <div class="contact-info">
-          <h4>Public Discussion (All Users)</h4>
-          <p>Community public group room</p>
+  <!-- 2. MAIN APP DASHBOARD -->
+  <div id="main-app">
+    <div class="top-nav">
+      <div class="user-tag" onclick="openProfileSettings()">
+        <img id="my-avatar" class="my-dp" src="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='18' font-size='18'>👤</text></svg>">
+        <div>
+          <h4 id="my-display-number" style="font-size: 15px;">User</h4>
+          <span style="font-size: 11px; color: #00a884;">Settings / DP</span>
         </div>
       </div>
-      <div id="contacts-container"></div>
+      <button onclick="doLogout()" style="background:transparent; border:none; color:#f15c6d; cursor:pointer;">Logout 🚪</button>
     </div>
 
-    <!-- 24h Status Tab -->
-    <div id="status-tab" style="display: none; padding: 15px;">
-      <button class="btn-primary" onclick="postStatusPrompt()">+ Update 24h Status</button>
-      <div id="status-list" style="margin-top: 20px;"></div>
-    </div>
+    <!-- Contacts / Recent Chat List -->
+    <div class="chats-container" id="contact-list"></div>
+
+    <button class="fab-btn" onclick="openAddContact()">💬</button>
   </div>
 
-  <!-- 3. CHAT ROOM -->
-  <div id="chat-room">
+  <!-- 3. CHAT ROOM (Strictly 1-to-1 & Confidential) -->
+  <div id="chat-panel">
     <div class="chat-header">
-      <div style="display: flex; align-items: center; gap: 8px;">
-        <button class="nav-btn" onclick="closeChat()">⬅</button>
-        <span id="active-chat-target" style="font-weight: bold;">User</span>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <button onclick="closeChat()" style="background:transparent; border:none; color:white; font-size: 20px;">⬅</button>
+        <h4 id="active-chat-user">User</h4>
       </div>
-      <div class="call-actions">
-        <button onclick="startCall('audio')">📞</button>
-        <button onclick="startCall('video')">📹</button>
+      <div>
+        <label for="bg-picker" style="cursor: pointer; font-size: 20px;">🎨</label>
+        <input type="color" id="bg-picker" style="display:none;" onchange="changeWallpaper(this.value)">
       </div>
     </div>
 
-    <div class="chat-messages" id="chat-stream"></div>
+    <div class="messages-area" id="msg-stream"></div>
 
-    <div class="chat-footer">
-      <div id="sticker-palette">
-        <span class="sticker-item" onclick="sendSticker('😀')">😀</span>
-        <span class="sticker-item" onclick="sendSticker('🔥')">🔥</span>
-        <span class="sticker-item" onclick="sendSticker('❤️')">❤️</span>
-        <span class="sticker-item" onclick="sendSticker('👍')">👍</span>
-        <span class="sticker-item" onclick="sendSticker('🎉')">🎉</span>
-        <span class="sticker-item" onclick="sendSticker('🚀')">🚀</span>
-      </div>
-      <button class="action-btn" onclick="toggleStickers()">😀</button>
-      <label for="media-file" class="action-btn" style="cursor: pointer;">📎</label>
-      <input type="file" id="media-file" accept="image/*,video/*,audio/*" style="display:none;" onchange="dispatchMessage()">
-      <input type="text" id="chat-input" placeholder="Type a message..." onkeydown="if(event.key==='Enter') dispatchMessage()">
-      <button class="action-btn send-icon" onclick="dispatchMessage()">➤</button>
+    <div class="footer-bar">
+      <label for="media-sender" style="cursor: pointer; font-size: 20px;">📎</label>
+      <input type="file" id="media-sender" style="display:none;" onchange="sendCurrentMessage()">
+      <input type="text" id="chat-box" placeholder="Type confidential message..." onkeydown="if(event.key==='Enter') sendCurrentMessage()">
+      <button onclick="sendCurrentMessage()" style="background: #00a884; border:none; color:white; border-radius:50%; width:36px; height:36px; cursor:pointer;">➤</button>
     </div>
   </div>
 
-  <!-- 4. CALLING OVERLAY -->
-  <div id="call-modal">
-    <video id="remote-video" autoplay playsinline></video>
-    <video id="local-video" autoplay muted playsinline></video>
-    <div class="call-controls">
-      <button class="hangup-btn" onclick="endCall()">☎</button>
+  <!-- MODAL: ADD NUMBER / START NEW CHAT -->
+  <div class="modal" id="contact-modal">
+    <div class="modal-card">
+      <h3 style="margin-bottom: 10px;">New Chat</h3>
+      <input type="tel" id="new-contact-num" class="input-box" placeholder="Enter Mobile Number">
+      <button class="btn-green" onclick="confirmAddContact()">Open Chat</button>
+      <button class="btn-outline" onclick="document.getElementById('contact-modal').style.display='none'">Cancel</button>
+    </div>
+  </div>
+
+  <!-- MODAL: PROFILE & DP SETTINGS -->
+  <div class="modal" id="profile-modal">
+    <div class="modal-card">
+      <h3 style="margin-bottom: 12px;">Profile Settings</h3>
+      <label style="font-size: 13px; color: #8696a0;">Change Profile Picture (DP):</label>
+      <input type="file" id="dp-input" accept="image/*" class="input-box">
+      <button class="btn-green" onclick="uploadProfileSettings()">Save Settings</button>
+      <button class="btn-outline" onclick="document.getElementById('profile-modal').style.display='none'">Close</button>
     </div>
   </div>
 
   <script>
     let socket = io();
-    let currentAuthUser = "";
-    let activeTarget = "All";
-    let localStream;
+    let currentUser = localStorage.getItem('chat_active_user') || '';
+    let currentTarget = '';
+    let currentWallpaper = localStorage.getItem('chat_wall') || '#0b141a';
 
-    async function handleAuth(action) {
-      const mobile = document.getElementById('auth-mobile').value.trim();
-      const pin = document.getElementById('auth-pin').value.trim();
-      const errBox = document.getElementById('auth-error');
-      errBox.innerText = "";
+    // Auto login check: Page refresh par wapas logout nahi hoga
+    window.onload = function() {
+      if (currentUser) {
+        launchDashboard();
+      }
+    };
+
+    function showSignupFlow() {
+      document.getElementById('login-fields').style.display = 'none';
+      document.getElementById('signup-fields').style.display = 'block';
+    }
+
+    function showLoginFlow() {
+      document.getElementById('login-fields').style.display = 'block';
+      document.getElementById('signup-fields').style.display = 'none';
+    }
+
+    async function requestOTP() {
+      const mobile = document.getElementById('reg-num').value.trim();
+      const res = await fetch('/send_otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mobile })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("Aapka Verification OTP hai: " + data.otp_preview);
+        document.getElementById('verify-box').style.display = 'block';
+        document.getElementById('otp-btn').style.display = 'none';
+      } else {
+        document.getElementById('auth-msg').innerText = data.message;
+      }
+    }
+
+    async function completeRegistration() {
+      const mobile = document.getElementById('reg-num').value.trim();
+      const otp = document.getElementById('reg-otp').value.trim();
+      const pin = document.getElementById('reg-pin').value.trim();
 
       const res = await fetch('/auth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, mobile, pin })
+        body: JSON.stringify({ action: 'signup', mobile, otp, pin })
       });
       const data = await res.json();
-
       if (res.ok) {
-        if (action === 'signup') {
-          alert("Account successfully ban gaya! Ab Log In karein.");
-        } else {
-          currentAuthUser = mobile;
-          document.getElementById('auth-view').style.display = 'none';
-          document.getElementById('dashboard-view').style.display = 'flex';
-          loadContacts();
-          setupSocket();
-        }
+        currentUser = mobile;
+        localStorage.setItem('chat_active_user', mobile);
+        launchDashboard();
       } else {
-        errBox.innerText = data.message;
+        document.getElementById('auth-msg').innerText = data.message;
       }
     }
 
+    async function doLogin() {
+      const mobile = document.getElementById('login-num').value.trim();
+      const pin = document.getElementById('login-pin').value.trim();
+
+      const res = await fetch('/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'login', mobile, pin })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        currentUser = mobile;
+        localStorage.setItem('chat_active_user', mobile);
+        if (data.wallpaper) currentWallpaper = data.wallpaper;
+        launchDashboard();
+      } else {
+        document.getElementById('auth-msg').innerText = data.message;
+      }
+    }
+
+    function doLogout() {
+      localStorage.removeItem('chat_active_user');
+      location.reload();
+    }
+
+    function launchDashboard() {
+      document.getElementById('auth-screen').style.display = 'none';
+      document.getElementById('main-app').style.display = 'flex';
+      document.getElementById('my-display-number').innerText = currentUser;
+      loadContacts();
+      listenSockets();
+    }
+
     async function loadContacts() {
-      const res = await fetch('/contacts');
+      const res = await fetch(`/my_contacts?user=${currentUser}`);
       const list = await res.json();
-      const cont = document.getElementById('contacts-container');
+      const cont = document.getElementById('contact-list');
       cont.innerHTML = '';
-      list.filter(n => n !== currentAuthUser).forEach(num => {
+
+      if (list.length === 0) {
+        cont.innerHTML = `<div style="text-align: center; color: #8696a0; margin-top: 50px;">Koi chat nahi hai. Niche 💬 button dabakar naya number jodiye!</div>`;
+        return;
+      }
+
+      list.forEach(c => {
+        const dpSrc = c.avatar || "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><text y='18' font-size='18'>👤</text></svg>";
         cont.innerHTML += `
-          <div class="contact-card" onclick="openChat('${num}', '${num}')">
-            <div class="avatar">${num.slice(-2)}</div>
-            <div class="contact-info">
-              <h4>${num}</h4>
-              <p>Direct Private Message</p>
+          <div class="chat-row" onclick="startPrivateChat('${c.mobile}')">
+            <img class="chat-dp" src="${dpSrc}">
+            <div>
+              <h4>${c.mobile}</h4>
+              <p style="font-size: 12px; color: #8696a0;">Tap to open confidential chat</p>
             </div>
-          </div>
-        `;
+          </div>`;
       });
     }
 
-    function openChat(target, label) {
-      activeTarget = target;
-      document.getElementById('active-chat-target').innerText = label;
-      document.getElementById('chat-room').style.display = 'flex';
-      renderMessages();
+    function openAddContact() {
+      document.getElementById('contact-modal').style.display = 'flex';
+    }
+
+    async function confirmAddContact() {
+      const num = document.getElementById('new-contact-num').value.trim();
+      if (!num || num === currentUser) return alert("Sahi number dalein!");
+
+      const res = await fetch('/add_contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ owner: currentUser, contact: num })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        document.getElementById('contact-modal').style.display = 'none';
+        loadContacts();
+        startPrivateChat(num);
+      } else {
+        alert(data.message);
+      }
+    }
+
+    function startPrivateChat(targetNum) {
+      currentTarget = targetNum;
+      document.getElementById('active-chat-user').innerText = targetNum;
+      document.getElementById('chat-panel').style.display = 'flex';
+      document.getElementById('msg-stream').style.backgroundColor = currentWallpaper;
+      loadMessages();
     }
 
     function closeChat() {
-      document.getElementById('chat-room').style.display = 'none';
+      document.getElementById('chat-panel').style.display = 'none';
     }
 
-    async function renderMessages() {
-      const res = await fetch(`/messages?target=${activeTarget}&user=${currentAuthUser}`);
+    async function loadMessages() {
+      const res = await fetch(`/messages?target=${currentTarget}&user=${currentUser}`);
       const list = await res.json();
-      const stream = document.getElementById('chat-stream');
+      const stream = document.getElementById('msg-stream');
       stream.innerHTML = '';
 
       list.forEach(m => {
-        const isMine = m.sender === currentAuthUser;
-        const bubbleClass = isMine ? 'outgoing' : 'incoming';
+        const isMine = m.sender === currentUser;
+        const bubble = isMine ? 'outgoing' : 'incoming';
 
         if (m.is_deleted === 1) {
-          stream.innerHTML += `
-            <div class="bubble ${bubbleClass}">
-              <div style="font-style:italic; color:#777;">🚫 This message was deleted</div>
-            </div>`;
+          stream.innerHTML += `<div class="bubble ${bubble}" style="font-style:italic; opacity:0.6;">🚫 Message deleted</div>`;
           return;
         }
 
-        let mediaBlock = '';
+        let media = '';
         if (m.file_url) {
-          if (m.file_type === 'image') mediaBlock = `<img src="${m.file_url}" style="max-width:200px; border-radius:6px; display:block; margin-top:5px;">`;
-          else if (m.file_type === 'video') mediaBlock = `<video src="${m.file_url}" controls style="max-width:200px; display:block;"></video>`;
-          else if (m.file_type === 'audio') mediaBlock = `<audio src="${m.file_url}" controls style="max-width:200px;"></audio>`;
+          if (m.file_type === 'image') media = `<img src="${m.file_url}" style="max-width:220px; border-radius:8px; display:block; margin-top:5px;">`;
+          else if (m.file_type === 'video') media = `<video src="${m.file_url}" controls style="max-width:220px;"></video>`;
+          else media = `<audio src="${m.file_url}" controls></audio>`;
         }
 
-        const delBtn = isMine ? `<button class="delete-action" onclick="deleteEveryone(${m.id})">🗑️</button>` : '';
+        const delBtn = isMine ? `<span onclick="deleteEveryone(${m.id})" style="cursor:pointer; margin-left:8px; opacity:0.7;">🗑️</span>` : '';
 
         stream.innerHTML += `
-          <div class="bubble ${bubbleClass}">
-            <div class="bubble-header">
-              <span>${isMine ? 'You' : m.sender}</span>
-              ${delBtn}
-            </div>
+          <div class="bubble ${bubble}">
+            <div style="font-size:11px; opacity:0.7; margin-bottom:2px;">${isMine ? 'You' : m.sender} ${delBtn}</div>
             ${m.text ? `<div>${m.text}</div>` : ''}
-            ${mediaBlock}
+            ${media}
           </div>`;
       });
       stream.scrollTop = stream.scrollHeight;
     }
 
-    async function dispatchMessage(customText = null) {
-      const input = document.getElementById('chat-input');
-      const fileInput = document.getElementById('media-file');
-      const text = customText || input.value.trim();
-      const file = fileInput.files[0];
+    async function sendCurrentMessage() {
+      const box = document.getElementById('chat-box');
+      const fileInp = document.getElementById('media-sender');
+      const text = box.value.trim();
+      const file = fileInp.files[0];
 
       if (!text && !file) return;
 
       const fd = new FormData();
-      fd.append('sender', currentAuthUser);
-      fd.append('target', activeTarget);
+      fd.append('sender', currentUser);
+      fd.append('target', currentTarget);
       fd.append('text', text);
       if (file) fd.append('file', file);
 
-      input.value = '';
-      fileInput.value = '';
+      box.value = '';
+      fileInp.value = '';
       await fetch('/send', { method: 'POST', body: fd });
-      renderMessages();
-    }
-
-    function sendSticker(emoji) {
-      toggleStickers();
-      dispatchMessage(emoji);
-    }
-
-    function toggleStickers() {
-      const p = document.getElementById('sticker-palette');
-      p.style.display = p.style.display === 'flex' ? 'none' : 'flex';
+      loadMessages();
     }
 
     async function deleteEveryone(id) {
@@ -304,74 +347,45 @@
       await fetch(`/delete_for_everyone/${id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sender: currentAuthUser })
+        body: JSON.stringify({ sender: currentUser })
       });
-      renderMessages();
+      loadMessages();
     }
 
-    function toggleTheme() {
-      document.body.classList.toggle('dark-mode');
-    }
-
-    function switchTab(type) {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      if (type === 'chats') {
-        document.querySelectorAll('.tab')[0].classList.add('active');
-        document.getElementById('chats-tab').style.display = 'block';
-        document.getElementById('status-tab').style.display = 'none';
-      } else {
-        document.querySelectorAll('.tab')[1].classList.add('active');
-        document.getElementById('chats-tab').style.display = 'none';
-        document.getElementById('status-tab').style.display = 'block';
-        loadStatus();
-      }
-    }
-
-    async function postStatusPrompt() {
-      const text = prompt("Status me kya likhna chahte hain?");
-      if (!text) return;
+    function changeWallpaper(color) {
+      currentWallpaper = color;
+      document.getElementById('msg-stream').style.backgroundColor = color;
+      localStorage.setItem('chat_wall', color);
       const fd = new FormData();
-      fd.append('sender', currentAuthUser);
-      fd.append('text', text);
-      await fetch('/status', { method: 'POST', body: fd });
-      loadStatus();
+      fd.append('mobile', currentUser);
+      fd.append('wallpaper', color);
+      fetch('/update_profile', { method: 'POST', body: fd });
     }
 
-    async function loadStatus() {
-      const res = await fetch('/status');
-      const list = await res.json();
-      const cont = document.getElementById('status-list');
-      cont.innerHTML = '';
-      list.forEach(s => {
-        cont.innerHTML += `
-          <div class="contact-card">
-            <div class="avatar" style="border: 2px solid #25d366;">${s.sender.slice(-2)}</div>
-            <div class="contact-info">
-              <h4>${s.sender}</h4>
-              <p>${s.content}</p>
-            </div>
-          </div>`;
-      });
+    function openProfileSettings() {
+      document.getElementById('profile-modal').style.display = 'flex';
     }
 
-    function setupSocket() {
-      socket.on('new_message', (msg) => {
-        if (msg.target === activeTarget || (msg.target === currentAuthUser && msg.sender === activeTarget)) {
-          renderMessages();
+    async function uploadProfileSettings() {
+      const dpFile = document.getElementById('dp-input').files[0];
+      if (dpFile) {
+        const fd = new FormData();
+        fd.append('mobile', currentUser);
+        fd.append('dp', dpFile);
+        await fetch('/update_profile', { method: 'POST', body: fd });
+        alert("DP successfully update ho gayi!");
+        location.reload();
+      }
+      document.getElementById('profile-modal').style.display = 'none';
+    }
+
+    function listenSockets() {
+      socket.on('new_message', (m) => {
+        if ((m.sender === currentTarget && m.target === currentUser) || (m.sender === currentUser && m.target === currentTarget)) {
+          loadMessages();
         }
       });
-      socket.on('message_deleted', () => renderMessages());
-    }
-
-    async function startCall(mode) {
-      document.getElementById('call-modal').style.display = 'flex';
-      localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: mode === 'video' });
-      document.getElementById('local-video').srcObject = localStream;
-    }
-
-    function endCall() {
-      if (localStream) localStream.getTracks().forEach(t => t.stop());
-      document.getElementById('call-modal').style.display = 'none';
+      socket.on('message_deleted', () => loadMessages());
     }
   </script>
 </body>
