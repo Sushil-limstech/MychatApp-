@@ -2,5 +2,5 @@ flask
 flask-socketio
 flask-cors
 gunicorn
-gevent
-gevent-websocket
+simple-websocket
+
